@@ -1,7 +1,28 @@
-import { Box, Chip, Paper, Stack, Typography } from '@mui/material'
+import {
+  Box,
+  ButtonBase,
+  Chip,
+  Paper,
+  Stack,
+  Typography,
+} from '@mui/material'
 import type { BuildingCourse } from '../domain/course'
 
-export function CourseRoadmap({ course }: { course: BuildingCourse }) {
+interface CourseRoadmapProps {
+  course: BuildingCourse
+  activeBlueprintId: string
+  unlockedBlueprintIds: Set<string>
+  completedBlueprintIds: Set<string>
+  onSelectBlueprint: (blueprintId: string) => void
+}
+
+export function CourseRoadmap({
+  course,
+  activeBlueprintId,
+  unlockedBlueprintIds,
+  completedBlueprintIds,
+  onSelectBlueprint,
+}: CourseRoadmapProps) {
   return (
     <Paper sx={{ p: 2 }}>
       <Stack spacing={1.5}>
@@ -27,18 +48,34 @@ export function CourseRoadmap({ course }: { course: BuildingCourse }) {
           }}
         >
           {course.chapters.map((chapter) => {
-            const current = chapter.status === 'current'
+            const blueprintId = chapter.blueprintId
+            const current = blueprintId === activeBlueprintId
+            const completed = Boolean(
+              blueprintId && completedBlueprintIds.has(blueprintId),
+            )
+            const unlocked = Boolean(
+              blueprintId && unlockedBlueprintIds.has(blueprintId),
+            )
 
-            return (
+            const statusLabel = current
+              ? 'Agora'
+              : completed
+                ? 'Concluído'
+                : unlocked
+                  ? 'Disponível'
+                  : 'Planejado'
+
+            const card = (
               <Paper
-                key={chapter.id}
                 variant="outlined"
                 sx={{
                   p: 1.5,
                   minWidth: 220,
                   maxWidth: 220,
-                  opacity: current ? 1 : 0.58,
+                  minHeight: 176,
+                  opacity: current || unlocked || completed ? 1 : 0.5,
                   borderWidth: current ? 2 : 1,
+                  textAlign: 'left',
                   scrollSnapAlign: 'start',
                 }}
               >
@@ -49,8 +86,8 @@ export function CourseRoadmap({ course }: { course: BuildingCourse }) {
                     </Typography>
                     <Chip
                       size="small"
-                      variant={current ? 'filled' : 'outlined'}
-                      label={current ? 'Agora' : 'Planejado'}
+                      variant={current || completed ? 'filled' : 'outlined'}
+                      label={statusLabel}
                     />
                   </Stack>
 
@@ -72,6 +109,20 @@ export function CourseRoadmap({ course }: { course: BuildingCourse }) {
                   </Stack>
                 </Stack>
               </Paper>
+            )
+
+            if (!blueprintId || !unlocked) {
+              return <Box key={chapter.id}>{card}</Box>
+            }
+
+            return (
+              <ButtonBase
+                key={chapter.id}
+                onClick={() => onSelectBlueprint(blueprintId)}
+                sx={{ borderRadius: 1, alignItems: 'stretch' }}
+              >
+                {card}
+              </ButtonBase>
             )
           })}
         </Box>
