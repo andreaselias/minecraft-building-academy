@@ -17,6 +17,7 @@ import {
 } from '@mui/material'
 import { BlueprintViewer, type CameraPreset } from './components/BlueprintViewer'
 import { starterHouse } from './data/starter-house'
+import type { BlueprintBlock } from './domain/blueprint'
 import {
   blockDisplayName,
   summarizeLayer,
@@ -41,6 +42,7 @@ export default function App() {
   const [showPrevious, setShowPrevious] = useState(true)
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('iso')
   const [completedLayers, setCompletedLayers] = useState<number[]>(loadCompletedLayers)
+  const [selectedBlock, setSelectedBlock] = useState<BlueprintBlock | null>(null)
 
   const maxLayer = useMemo(
     () => Math.max(...starterHouse.blocks.map((block) => block.y)),
@@ -68,6 +70,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(completedLayers))
   }, [completedLayers])
+
+  useEffect(() => {
+    setSelectedBlock(null)
+  }, [layer])
 
   function toggleLayerComplete() {
     if (layerComplete) {
@@ -117,7 +123,11 @@ export default function App() {
                   {completedLayers.length}/{maxLayer + 1} camadas
                 </Typography>
               </Stack>
-              <LinearProgress variant="determinate" value={progress} sx={{ mt: 1, height: 8, borderRadius: 999 }} />
+              <LinearProgress
+                variant="determinate"
+                value={progress}
+                sx={{ mt: 1, height: 8, borderRadius: 999 }}
+              />
             </Box>
             <Typography variant="body2" color="text.secondary">
               O progresso fica salvo neste navegador.
@@ -157,6 +167,40 @@ export default function App() {
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               {starterHouse.layerNotes?.[layer] ?? 'Siga o blueprint destacando apenas a camada atual.'}
             </Typography>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="overline" color="text.secondary">
+              Bloco selecionado
+            </Typography>
+            {selectedBlock ? (
+              <Stack spacing={1} sx={{ mt: 0.5 }}>
+                <Typography fontWeight={800}>
+                  {blockDisplayName(selectedBlock.block)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  X {selectedBlock.x} · Y {selectedBlock.y} · Z {selectedBlock.z}
+                </Typography>
+                {selectedBlock.states && (
+                  <Stack direction="row" gap={0.75} flexWrap="wrap">
+                    {Object.entries(selectedBlock.states)
+                      .filter(([, value]) => value !== undefined)
+                      .map(([key, value]) => (
+                        <Chip
+                          key={key}
+                          size="small"
+                          variant="outlined"
+                          label={key + ': ' + String(value)}
+                        />
+                      ))}
+                  </Stack>
+                )}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Clique em um bloco da camada atual para ver coordenada e orientação.
+              </Typography>
+            )}
           </Paper>
 
           <Paper sx={{ overflow: 'hidden' }}>
@@ -202,6 +246,8 @@ export default function App() {
                 layer={layer}
                 showPrevious={showPrevious}
                 cameraPreset={cameraPreset}
+                selectedBlock={selectedBlock}
+                onSelectBlock={setSelectedBlock}
               />
             </Box>
           </Paper>
