@@ -207,7 +207,7 @@ for (let y = 1; y <= 3; y += 1) {
       if (supports.has(key)) {
         add(stepId, x, y, z, 'minecraft:spruce_log', { axis: 'y' })
       } else if (y === 2 && windows.has(key)) {
-        add(stepId, x, y, z, 'minecraft:glass_pane')
+        add(stepId, x, y, z, 'minecraft:glass_pane', { axis: x === 0 || x === 10 ? 'z' : 'x' })
       } else {
         add(stepId, x, y, z, 'minecraft:spruce_planks')
       }
@@ -250,7 +250,11 @@ for (const row of gableRows) {
   for (const x of [0, 10]) {
     for (let z = row.minZ; z <= row.maxZ; z += 1) {
       const frontWindow = x === 0 && z === 4 && (row.y === 6 || row.y === 7)
-      add(stepId, x, row.y, z, frontWindow ? 'minecraft:glass_pane' : 'minecraft:spruce_planks')
+      if (frontWindow) {
+        add(stepId, x, row.y, z, 'minecraft:glass_pane', { axis: 'z' })
+      } else {
+        add(stepId, x, row.y, z, 'minecraft:spruce_planks')
+      }
     }
   }
 }
