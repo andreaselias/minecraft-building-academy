@@ -162,6 +162,12 @@ export default function App() {
     [currentStep.id, effectiveBlueprint],
   )
 
+  const currentStepPositionCount =
+    currentStepBlocks.length +
+    (effectiveBlueprint.operations ?? []).filter(
+      (operation) => operation.stepId === currentStep.id,
+    ).length
+
   const totalMaterials = useMemo(
     () => summarizeBlueprintMaterials(effectiveBlueprint),
     [effectiveBlueprint],
@@ -824,7 +830,7 @@ export default function App() {
                 {currentStep.title}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {currentStepBlocks.length} posições · camada Y=
+                {currentStepPositionCount} posições · camada Y=
                 {currentStep.layer}
               </Typography>
             </Box>
