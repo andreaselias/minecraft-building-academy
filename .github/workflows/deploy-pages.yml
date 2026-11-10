@@ -1,9 +1,6 @@
 name: Deploy preview to GitHub Pages
 
 on:
-  push:
-    branches:
-      - feat/vertical-slice-starter-house
   workflow_dispatch:
 
 permissions:
