@@ -23,6 +23,7 @@ import {
   blockDisplayName,
   summarizeMaterials,
 } from './utils/materials'
+import { applyPalette } from './utils/palette'
 
 type LearningMode = 'build' | 'learn'
 
@@ -43,6 +44,7 @@ function loadCompletedSteps() {
 
 export default function App() {
   const [mode, setMode] = useState<LearningMode>('learn')
+  const [selectedPaletteId, setSelectedPaletteId] = useState('spruce')
   const [stepIndex, setStepIndex] = useState(0)
   const [showPrevious, setShowPrevious] = useState(true)
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('iso')
@@ -52,10 +54,17 @@ export default function App() {
   const [hintRevealed, setHintRevealed] = useState(false)
 
   const currentStep = starterHouse.steps[stepIndex]
+  const selectedPalette =
+    starterHouse.palettes?.find((palette) => palette.id === selectedPaletteId) ??
+    starterHouse.palettes?.[0]
+  const effectiveBlueprint = useMemo(
+    () => applyPalette(starterHouse, selectedPalette),
+    [selectedPalette],
+  )
 
   const currentStepBlocks = useMemo(
-    () => starterHouse.blocks.filter((block) => block.stepId === currentStep.id),
-    [currentStep.id],
+    () => effectiveBlueprint.blocks.filter((block) => block.stepId === currentStep.id),
+    [currentStep.id, effectiveBlueprint],
   )
 
   const currentMaterials = useMemo(
@@ -64,8 +73,8 @@ export default function App() {
   )
 
   const totalMaterials = useMemo(
-    () => summarizeMaterials(starterHouse.blocks),
-    [],
+    () => summarizeMaterials(effectiveBlueprint.blocks),
+    [effectiveBlueprint],
   )
 
   const firstIncompleteIndex = useMemo(() => {
@@ -179,6 +188,25 @@ export default function App() {
             >
               <ToggleButton value="learn">Learn</ToggleButton>
               <ToggleButton value="build">Build</ToggleButton>
+            </ToggleButtonGroup>
+
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+              Paleta
+            </Typography>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={selectedPaletteId}
+              onChange={(_, value: string | null) => {
+                if (value) setSelectedPaletteId(value)
+              }}
+              sx={{ display: 'flex', mt: 0.5 }}
+            >
+              {starterHouse.palettes?.map((palette) => (
+                <ToggleButton key={palette.id} value={palette.id}>
+                  {palette.title}
+                </ToggleButton>
+              ))}
             </ToggleButtonGroup>
           </Box>
         </Stack>
@@ -404,7 +432,7 @@ export default function App() {
             <Divider />
             <Box sx={{ height: { xs: 480, md: 650 } }}>
               <BlueprintViewer
-                blueprint={starterHouse}
+                blueprint={effectiveBlueprint}
                 visibleStepIds={visibleStepIds}
                 currentStepId={currentStep.id}
                 cameraPreset={cameraPreset}
