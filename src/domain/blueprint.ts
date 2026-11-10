@@ -1,5 +1,6 @@
 export type BlockFacing = 'north' | 'south' | 'east' | 'west'
 export type BlockAxis = 'x' | 'y' | 'z'
+export type BuildStepKind = 'foundation' | 'structure' | 'shell' | 'roof' | 'interior' | 'detail'
 
 export interface BlockState {
   facing?: BlockFacing
@@ -15,6 +16,7 @@ export interface BlueprintBlock {
   y: number
   z: number
   block: string
+  stepId: string
   states?: BlockState
   note?: string
   materialUnits?: number
@@ -35,6 +37,23 @@ export interface BuildLesson {
   checkpoints?: string[]
 }
 
+export interface BuildChallenge {
+  prompt: string
+  hint?: string
+  reflection?: string
+}
+
+export interface BuildStep {
+  id: string
+  title: string
+  description: string
+  layer: number
+  kind: BuildStepKind
+  concept?: string
+  tip?: string
+  challenge?: BuildChallenge
+}
+
 export interface Blueprint {
   id: string
   title: string
@@ -52,8 +71,8 @@ export interface Blueprint {
     origin: [number, number, number]
   }
   lessons: BuildLesson[]
+  steps: BuildStep[]
   blocks: BlueprintBlock[]
   materialSubstitutions?: Record<string, string[]>
-  layerNotes?: Record<number, string>
   materials?: MaterialRequirement[]
 }
