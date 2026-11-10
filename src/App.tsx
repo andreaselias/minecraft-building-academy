@@ -143,14 +143,6 @@ export default function App() {
     return applyPalette(baseBlueprint, basePalette)
   }, [baseBlueprint, selectedPaletteId])
 
-  const displayBlueprint = useMemo(
-    () =>
-      effectiveBaseBlueprint
-        ? composeBlueprint(effectiveBaseBlueprint, effectiveBlueprint)
-        : effectiveBlueprint,
-    [effectiveBaseBlueprint, effectiveBlueprint],
-  )
-
   const currentStepIndex = Math.min(
     stepIndex,
     Math.max(activeBlueprint.steps.length - 1, 0),
@@ -217,6 +209,18 @@ export default function App() {
     effectiveBaseBlueprint,
     showPrevious,
   ])
+
+  const displayBlueprint = useMemo(
+    () =>
+      effectiveBaseBlueprint
+        ? composeBlueprint(
+            effectiveBaseBlueprint,
+            effectiveBlueprint,
+            visibleStepIds,
+          )
+        : effectiveBlueprint,
+    [effectiveBaseBlueprint, effectiveBlueprint, visibleStepIds],
+  )
 
   const progress =
     (completedStepIds.filter((id) =>
