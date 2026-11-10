@@ -3,6 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import type { OrthographicCamera } from 'three'
 import type { Blueprint, BlueprintBlock } from '../domain/blueprint'
+import { BASE_BUILD_STEP_ID } from '../utils/compose-blueprint'
 import { BlockMesh } from './BlockMesh'
 
 export type CameraPreset = 'iso' | 'top' | 'front' | 'side'
@@ -93,6 +94,9 @@ export function BlueprintViewer({
             key={block.block + '-' + block.x + '-' + block.y + '-' + block.z + '-' + index}
             block={block}
             ghost={!current}
+            ghostOpacity={
+              block.stepId === BASE_BUILD_STEP_ID ? 0.32 : 0.13
+            }
             selected={selectedBlock === block}
             onSelect={current ? onSelectBlock : undefined}
             position={[
