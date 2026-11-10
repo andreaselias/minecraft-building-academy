@@ -2,7 +2,7 @@ import { OrbitControls } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import type { OrthographicCamera } from 'three'
-import type { Blueprint } from '../domain/blueprint'
+import type { Blueprint, BlueprintBlock } from '../domain/blueprint'
 import { BlockMesh } from './BlockMesh'
 
 export type CameraPreset = 'iso' | 'top' | 'front' | 'side'
@@ -12,6 +12,8 @@ interface BlueprintViewerProps {
   layer: number
   showPrevious: boolean
   cameraPreset: CameraPreset
+  selectedBlock: BlueprintBlock | null
+  onSelectBlock: (block: BlueprintBlock | null) => void
 }
 
 const cameraPositions: Record<CameraPreset, [number, number, number]> = {
@@ -42,6 +44,8 @@ export function BlueprintViewer({
   layer,
   showPrevious,
   cameraPreset,
+  selectedBlock,
+  onSelectBlock,
 }: BlueprintViewerProps) {
   const visibleBlocks = useMemo(
     () =>
@@ -60,6 +64,7 @@ export function BlueprintViewer({
       shadows
       dpr={[1, 2]}
       camera={{ position: cameraPositions.iso, zoom: 38, near: 0.1, far: 200 }}
+      onPointerMissed={() => onSelectBlock(null)}
     >
       <color attach="background" args={['#11151a']} />
       <ambientLight intensity={1.7} />
@@ -79,6 +84,8 @@ export function BlueprintViewer({
           key={block.block + '-' + block.x + '-' + block.y + '-' + block.z + '-' + index}
           block={block}
           ghost={block.y < layer}
+          selected={selectedBlock === block}
+          onSelect={block.y === layer ? onSelectBlock : undefined}
           position={[
             block.x - centerX,
             block.y + 0.5,
