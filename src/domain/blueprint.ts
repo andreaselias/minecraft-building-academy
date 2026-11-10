@@ -17,6 +17,7 @@ export interface BlueprintBlock {
   block: string
   states?: BlockState
   note?: string
+  materialUnits?: number
 }
 
 export interface MaterialRequirement {
@@ -41,9 +42,18 @@ export interface Blueprint {
   minimumVersion: string
   style: string
   survivalTier: 'early' | 'mid' | 'late'
-  size: { width: number; depth: number; height: number }
-  spawnReference: { description: string; origin: [number, number, number] }
+  size: {
+    width: number
+    depth: number
+    height: number
+  }
+  spawnReference: {
+    description: string
+    origin: [number, number, number]
+  }
   lessons: BuildLesson[]
-  materials: MaterialRequirement[]
   blocks: BlueprintBlock[]
+  materialSubstitutions?: Record<string, string[]>
+  layerNotes?: Record<number, string>
+  materials?: MaterialRequirement[]
 }
