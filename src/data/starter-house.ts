@@ -335,6 +335,26 @@ export const starterHouse: Blueprint = {
     },
   ],
   steps,
+  palettes: [
+    {
+      id: 'spruce',
+      title: 'Spruce',
+      description: 'Paleta recomendada: madeira escura, contraste forte e leitura medieval.',
+      replacements: {},
+    },
+    {
+      id: 'oak',
+      title: 'Oak',
+      description: 'Alternativa de early game quando spruce ainda não está acessível.',
+      replacements: {
+        'minecraft:spruce_log': 'minecraft:oak_log',
+        'minecraft:spruce_planks': 'minecraft:oak_planks',
+        'minecraft:spruce_stairs': 'minecraft:oak_stairs',
+        'minecraft:spruce_slab': 'minecraft:oak_slab',
+        'minecraft:spruce_door': 'minecraft:oak_door',
+      },
+    },
+  ],
   materialSubstitutions: {
     'minecraft:spruce_log': ['minecraft:oak_log', 'minecraft:dark_oak_log'],
     'minecraft:spruce_planks': ['minecraft:oak_planks', 'minecraft:dark_oak_planks'],
