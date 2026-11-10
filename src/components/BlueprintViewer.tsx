@@ -9,8 +9,8 @@ export type CameraPreset = 'iso' | 'top' | 'front' | 'side'
 
 interface BlueprintViewerProps {
   blueprint: Blueprint
-  layer: number
-  showPrevious: boolean
+  visibleStepIds: string[]
+  currentStepId: string
   cameraPreset: CameraPreset
   selectedBlock: BlueprintBlock | null
   onSelectBlock: (block: BlueprintBlock | null) => void
@@ -41,18 +41,17 @@ function CameraRig({ preset }: { preset: CameraPreset }) {
 
 export function BlueprintViewer({
   blueprint,
-  layer,
-  showPrevious,
+  visibleStepIds,
+  currentStepId,
   cameraPreset,
   selectedBlock,
   onSelectBlock,
 }: BlueprintViewerProps) {
+  const visibleStepSet = useMemo(() => new Set(visibleStepIds), [visibleStepIds])
+
   const visibleBlocks = useMemo(
-    () =>
-      blueprint.blocks.filter(
-        (block) => block.y === layer || (showPrevious && block.y < layer),
-      ),
-    [blueprint, layer, showPrevious],
+    () => blueprint.blocks.filter((block) => visibleStepSet.has(block.stepId)),
+    [blueprint, visibleStepSet],
   )
 
   const centerX = (blueprint.size.width - 1) / 2
@@ -79,20 +78,24 @@ export function BlueprintViewer({
 
       <CameraRig preset={cameraPreset} />
 
-      {visibleBlocks.map((block, index) => (
-        <BlockMesh
-          key={block.block + '-' + block.x + '-' + block.y + '-' + block.z + '-' + index}
-          block={block}
-          ghost={block.y < layer}
-          selected={selectedBlock === block}
-          onSelect={block.y === layer ? onSelectBlock : undefined}
-          position={[
-            block.x - centerX,
-            block.y + 0.5,
-            block.z - centerZ,
-          ]}
-        />
-      ))}
+      {visibleBlocks.map((block, index) => {
+        const current = block.stepId === currentStepId
+
+        return (
+          <BlockMesh
+            key={block.block + '-' + block.x + '-' + block.y + '-' + block.z + '-' + index}
+            block={block}
+            ghost={!current}
+            selected={selectedBlock === block}
+            onSelect={current ? onSelectBlock : undefined}
+            position={[
+              block.x - centerX,
+              block.y + 0.5,
+              block.z - centerZ,
+            ]}
+          />
+        )
+      })}
 
       <gridHelper args={[26, 26, '#727b83', '#2e363d']} position={[0, -0.02, 0]} />
       <OrbitControls
