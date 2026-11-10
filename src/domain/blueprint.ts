@@ -22,6 +22,29 @@ export interface BlueprintBlock {
   materialUnits?: number
 }
 
+export interface RemoveBlockOperation {
+  type: 'remove'
+  stepId: string
+  x: number
+  y: number
+  z: number
+}
+
+export interface ReplaceBlockOperation {
+  type: 'replace'
+  stepId: string
+  x: number
+  y: number
+  z: number
+  block: string
+  states?: BlockState
+  materialUnits?: number
+}
+
+export type BlueprintOperation =
+  | RemoveBlockOperation
+  | ReplaceBlockOperation
+
 export interface MaterialRequirement {
   block: string
   count: number
@@ -82,6 +105,7 @@ export interface Blueprint {
   lessons: BuildLesson[]
   steps: BuildStep[]
   blocks: BlueprintBlock[]
+  operations?: BlueprintOperation[]
   palettes?: PaletteVariant[]
   materialSubstitutions?: Record<string, string[]>
   materials?: MaterialRequirement[]
