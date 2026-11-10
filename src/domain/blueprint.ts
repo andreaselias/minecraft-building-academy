@@ -43,6 +43,13 @@ export interface BuildChallenge {
   reflection?: string
 }
 
+export interface PaletteVariant {
+  id: string
+  title: string
+  description: string
+  replacements: Record<string, string>
+}
+
 export interface BuildStep {
   id: string
   title: string
@@ -74,6 +81,7 @@ export interface Blueprint {
   lessons: BuildLesson[]
   steps: BuildStep[]
   blocks: BlueprintBlock[]
+  palettes?: PaletteVariant[]
   materialSubstitutions?: Record<string, string[]>
   materials?: MaterialRequirement[]
 }
