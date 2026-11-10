@@ -25,7 +25,7 @@ import {
 } from './utils/compose-blueprint'
 import {
   blockDisplayName,
-  summarizeMaterials,
+  summarizeBlueprintMaterials,
 } from './utils/materials'
 import { applyPalette } from './utils/palette'
 
@@ -158,12 +158,12 @@ export default function App() {
   )
 
   const currentMaterials = useMemo(
-    () => summarizeMaterials(currentStepBlocks),
-    [currentStepBlocks],
+    () => summarizeBlueprintMaterials(effectiveBlueprint, currentStep.id),
+    [currentStep.id, effectiveBlueprint],
   )
 
   const totalMaterials = useMemo(
-    () => summarizeMaterials(effectiveBlueprint.blocks),
+    () => summarizeBlueprintMaterials(effectiveBlueprint),
     [effectiveBlueprint],
   )
 
