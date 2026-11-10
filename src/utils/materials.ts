@@ -1,4 +1,8 @@
-import type { BlueprintBlock } from '../domain/blueprint'
+import type {
+  Blueprint,
+  BlueprintBlock,
+  ReplaceBlockOperation,
+} from '../domain/blueprint'
 
 export interface MaterialSummary {
   block: string
@@ -17,6 +21,39 @@ export function summarizeMaterials(blocks: BlueprintBlock[]): MaterialSummary[] 
   return [...totals.entries()]
     .map(([block, count]) => ({ block, count }))
     .sort((a, b) => b.count - a.count)
+}
+
+function replacementAsBlock(
+  operation: ReplaceBlockOperation,
+): BlueprintBlock {
+  return {
+    x: operation.x,
+    y: operation.y,
+    z: operation.z,
+    block: operation.block,
+    stepId: operation.stepId,
+    states: operation.states,
+    materialUnits: operation.materialUnits,
+  }
+}
+
+export function summarizeBlueprintMaterials(
+  blueprint: Blueprint,
+  stepId?: string,
+): MaterialSummary[] {
+  const blocks = stepId
+    ? blueprint.blocks.filter((block) => block.stepId === stepId)
+    : blueprint.blocks
+
+  const replacements = (blueprint.operations ?? [])
+    .filter(
+      (operation): operation is ReplaceBlockOperation =>
+        operation.type === 'replace' &&
+        (!stepId || operation.stepId === stepId),
+    )
+    .map(replacementAsBlock)
+
+  return summarizeMaterials([...blocks, ...replacements])
 }
 
 export function summarizeLayer(blocks: BlueprintBlock[], layer: number) {
