@@ -154,10 +154,13 @@ export function BlockMesh({
   }
 
   if (block.block.includes('glass_pane')) {
+    const axis = block.states?.axis
+    const size: [number, number, number] =
+      axis === 'x' ? [0.9, 1, 0.12] : axis === 'z' ? [0.12, 1, 0.9] : [0.9, 1, 0.12]
+
     return (
       <group position={position} onClick={handleClick}>
-        <BoxPart size={[0.12, 1, 0.9]} color={color} opacity={opacity} edges={edges} edgeColor={edgeColor} />
-        <BoxPart size={[0.9, 1, 0.12]} color={color} opacity={opacity} edges={edges} edgeColor={edgeColor} />
+        <BoxPart size={size} color={color} opacity={opacity} edges={edges} edgeColor={edgeColor} />
       </group>
     )
   }
