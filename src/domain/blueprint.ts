@@ -59,6 +59,7 @@ export interface Blueprint {
   title: string
   edition: 'bedrock'
   minimumVersion: string
+  targetVersion: string
   style: string
   survivalTier: 'early' | 'mid' | 'late'
   size: {
