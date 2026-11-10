@@ -16,9 +16,13 @@ import {
 } from '@mui/material'
 import { BlueprintViewer, type CameraPreset } from './components/BlueprintViewer'
 import { CourseRoadmap } from './components/CourseRoadmap'
+import { blueprintRegistry } from './data/blueprints'
 import { buildingCourse } from './data/course'
-import { starterHouse } from './data/starter-house'
 import type { BlueprintBlock } from './domain/blueprint'
+import {
+  BASE_BUILD_STEP_ID,
+  composeBlueprint,
+} from './utils/compose-blueprint'
 import {
   blockDisplayName,
   summarizeMaterials,
@@ -27,43 +31,137 @@ import { applyPalette } from './utils/palette'
 
 type LearningMode = 'build' | 'learn'
 
-const storageKey = 'minecraft-building-academy:starter-house-01:steps'
+const initialBlueprintId =
+  buildingCourse.chapters.find((chapter) => chapter.blueprintId)?.blueprintId ??
+  Object.keys(blueprintRegistry)[0]
 
-function loadCompletedSteps() {
-  try {
-    const value = localStorage.getItem(storageKey)
-    if (!value) return [] as string[]
-    const parsed = JSON.parse(value)
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === 'string')
-      : []
-  } catch {
-    return [] as string[]
+function progressStorageKey(blueprintId: string) {
+  return 'minecraft-building-academy:' + blueprintId + ':steps'
+}
+
+function loadProgressByBlueprint() {
+  const progress: Record<string, string[]> = {}
+
+  for (const blueprintId of Object.keys(blueprintRegistry)) {
+    try {
+      const value = localStorage.getItem(progressStorageKey(blueprintId))
+      if (!value) {
+        progress[blueprintId] = []
+        continue
+      }
+
+      const parsed = JSON.parse(value)
+      progress[blueprintId] = Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === 'string')
+        : []
+    } catch {
+      progress[blueprintId] = []
+    }
   }
+
+  return progress
 }
 
 export default function App() {
   const [mode, setMode] = useState<LearningMode>('learn')
+  const [activeBlueprintId, setActiveBlueprintId] = useState(initialBlueprintId)
   const [selectedPaletteId, setSelectedPaletteId] = useState('spruce')
   const [stepIndex, setStepIndex] = useState(0)
   const [showPrevious, setShowPrevious] = useState(true)
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('iso')
-  const [completedStepIds, setCompletedStepIds] = useState<string[]>(loadCompletedSteps)
+  const [completedByBlueprint, setCompletedByBlueprint] =
+    useState<Record<string, string[]>>(loadProgressByBlueprint)
   const [selectedBlock, setSelectedBlock] = useState<BlueprintBlock | null>(null)
   const [solutionRevealed, setSolutionRevealed] = useState(false)
   const [hintRevealed, setHintRevealed] = useState(false)
 
-  const currentStep = starterHouse.steps[stepIndex]
-  const selectedPalette =
-    starterHouse.palettes?.find((palette) => palette.id === selectedPaletteId) ??
-    starterHouse.palettes?.[0]
-  const effectiveBlueprint = useMemo(
-    () => applyPalette(starterHouse, selectedPalette),
-    [selectedPalette],
+  const activeBlueprint = blueprintRegistry[activeBlueprintId]
+  const completedStepIds = completedByBlueprint[activeBlueprintId] ?? []
+
+  const completedBlueprintIds = useMemo(() => {
+    const completed = new Set<string>()
+
+    for (const blueprint of Object.values(blueprintRegistry)) {
+      const progress = completedByBlueprint[blueprint.id] ?? []
+      const validCompleted = blueprint.steps.filter((step) =>
+        progress.includes(step.id),
+      )
+
+      if (validCompleted.length === blueprint.steps.length) {
+        completed.add(blueprint.id)
+      }
+    }
+
+    return completed
+  }, [completedByBlueprint])
+
+  const unlockedBlueprintIds = useMemo(() => {
+    const unlocked = new Set<string>()
+    let previousBlueprintComplete = true
+
+    for (const chapter of buildingCourse.chapters) {
+      if (!chapter.blueprintId) {
+        previousBlueprintComplete = false
+        continue
+      }
+
+      if (previousBlueprintComplete) {
+        unlocked.add(chapter.blueprintId)
+      }
+
+      previousBlueprintComplete = completedBlueprintIds.has(chapter.blueprintId)
+    }
+
+    return unlocked
+  }, [completedBlueprintIds])
+
+  const selectedPalette = useMemo(
+    () =>
+      activeBlueprint.palettes?.find(
+        (palette) => palette.id === selectedPaletteId,
+      ) ?? activeBlueprint.palettes?.[0],
+    [activeBlueprint, selectedPaletteId],
   )
 
+  const effectiveBlueprint = useMemo(
+    () => applyPalette(activeBlueprint, selectedPalette),
+    [activeBlueprint, selectedPalette],
+  )
+
+  const baseBlueprint = activeBlueprint.baseBlueprintId
+    ? blueprintRegistry[activeBlueprint.baseBlueprintId]
+    : undefined
+
+  const effectiveBaseBlueprint = useMemo(() => {
+    if (!baseBlueprint) return undefined
+
+    const basePalette =
+      baseBlueprint.palettes?.find(
+        (palette) => palette.id === selectedPaletteId,
+      ) ?? baseBlueprint.palettes?.[0]
+
+    return applyPalette(baseBlueprint, basePalette)
+  }, [baseBlueprint, selectedPaletteId])
+
+  const displayBlueprint = useMemo(
+    () =>
+      effectiveBaseBlueprint
+        ? composeBlueprint(effectiveBaseBlueprint, effectiveBlueprint)
+        : effectiveBlueprint,
+    [effectiveBaseBlueprint, effectiveBlueprint],
+  )
+
+  const currentStepIndex = Math.min(
+    stepIndex,
+    Math.max(activeBlueprint.steps.length - 1, 0),
+  )
+  const currentStep = activeBlueprint.steps[currentStepIndex]
+
   const currentStepBlocks = useMemo(
-    () => effectiveBlueprint.blocks.filter((block) => block.stepId === currentStep.id),
+    () =>
+      effectiveBlueprint.blocks.filter(
+        (block) => block.stepId === currentStep.id,
+      ),
     [currentStep.id, effectiveBlueprint],
   )
 
@@ -78,13 +176,16 @@ export default function App() {
   )
 
   const firstIncompleteIndex = useMemo(() => {
-    const index = starterHouse.steps.findIndex(
+    const index = activeBlueprint.steps.findIndex(
       (step) => !completedStepIds.includes(step.id),
     )
-    return index === -1 ? starterHouse.steps.length - 1 : index
-  }, [completedStepIds])
+
+    return index === -1 ? activeBlueprint.steps.length - 1 : index
+  }, [activeBlueprint.steps, completedStepIds])
 
   const stepComplete = completedStepIds.includes(currentStep.id)
+  const chapterComplete = completedBlueprintIds.has(activeBlueprint.id)
+
   const challengeLocked =
     mode === 'learn' &&
     Boolean(currentStep.challenge) &&
@@ -94,28 +195,94 @@ export default function App() {
   const currentStepVisible = mode === 'build' || !challengeLocked
 
   const visibleStepIds = useMemo(() => {
+    const baseContext =
+      showPrevious && effectiveBaseBlueprint ? [BASE_BUILD_STEP_ID] : []
+
     if (!showPrevious) {
       return currentStepVisible ? [currentStep.id] : []
     }
 
-    const previous = starterHouse.steps
-      .slice(0, stepIndex)
+    const previous = activeBlueprint.steps
+      .slice(0, currentStepIndex)
       .map((step) => step.id)
 
-    return currentStepVisible ? [...previous, currentStep.id] : previous
-  }, [currentStep.id, currentStepVisible, showPrevious, stepIndex])
+    return currentStepVisible
+      ? [...baseContext, ...previous, currentStep.id]
+      : [...baseContext, ...previous]
+  }, [
+    activeBlueprint.steps,
+    currentStep.id,
+    currentStepIndex,
+    currentStepVisible,
+    effectiveBaseBlueprint,
+    showPrevious,
+  ])
 
-  const progress = (completedStepIds.length / starterHouse.steps.length) * 100
+  const progress =
+    (completedStepIds.filter((id) =>
+      activeBlueprint.steps.some((step) => step.id === id),
+    ).length /
+      activeBlueprint.steps.length) *
+    100
+
+  const activeChapterIndex = buildingCourse.chapters.findIndex(
+    (chapter) => chapter.blueprintId === activeBlueprint.id,
+  )
+
+  const nextUnlockedBlueprintId = useMemo(() => {
+    if (!chapterComplete) return undefined
+
+    return buildingCourse.chapters
+      .slice(activeChapterIndex + 1)
+      .map((chapter) => chapter.blueprintId)
+      .find(
+        (blueprintId): blueprintId is string =>
+          Boolean(
+            blueprintId &&
+              unlockedBlueprintIds.has(blueprintId) &&
+              blueprintRegistry[blueprintId],
+          ),
+      )
+  }, [
+    activeChapterIndex,
+    chapterComplete,
+    unlockedBlueprintIds,
+  ])
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(completedStepIds))
-  }, [completedStepIds])
+    for (const [blueprintId, completed] of Object.entries(
+      completedByBlueprint,
+    )) {
+      localStorage.setItem(
+        progressStorageKey(blueprintId),
+        JSON.stringify(completed),
+      )
+    }
+  }, [completedByBlueprint])
+
+  useEffect(() => {
+    const palettes = activeBlueprint.palettes ?? []
+
+    if (
+      palettes.length > 0 &&
+      !palettes.some((palette) => palette.id === selectedPaletteId)
+    ) {
+      setSelectedPaletteId(palettes[0].id)
+    }
+  }, [activeBlueprint, selectedPaletteId])
 
   useEffect(() => {
     setSelectedBlock(null)
     setSolutionRevealed(false)
     setHintRevealed(false)
-  }, [stepIndex, mode])
+  }, [activeBlueprintId, currentStepIndex, mode])
+
+  function selectBlueprint(blueprintId: string) {
+    if (!unlockedBlueprintIds.has(blueprintId)) return
+
+    setActiveBlueprintId(blueprintId)
+    setStepIndex(0)
+  }
 
   function visitStep(index: number) {
     if (index > firstIncompleteIndex) return
@@ -125,17 +292,33 @@ export default function App() {
   function completeCurrentStep() {
     if (challengeLocked || stepComplete) return
 
-    setCompletedStepIds((current) => [...new Set([...current, currentStep.id])])
+    setCompletedByBlueprint((current) => ({
+      ...current,
+      [activeBlueprint.id]: [
+        ...new Set([
+          ...(current[activeBlueprint.id] ?? []),
+          currentStep.id,
+        ]),
+      ],
+    }))
 
-    if (stepIndex < starterHouse.steps.length - 1) {
-      setStepIndex(stepIndex + 1)
+    if (currentStepIndex < activeBlueprint.steps.length - 1) {
+      setStepIndex(currentStepIndex + 1)
     }
   }
 
   function goToNextUnlockedStep() {
-    if (stepIndex < firstIncompleteIndex) {
-      setStepIndex(stepIndex + 1)
+    if (currentStepIndex < firstIncompleteIndex) {
+      setStepIndex(currentStepIndex + 1)
     }
+  }
+
+  function resetCurrentChapter() {
+    setCompletedByBlueprint((current) => ({
+      ...current,
+      [activeBlueprint.id]: [],
+    }))
+    setStepIndex(0)
   }
 
   const canComplete = !stepComplete && !challengeLocked
@@ -154,64 +337,83 @@ export default function App() {
               Minecraft Building Academy · Bedrock
             </Typography>
             <Typography variant="h3" fontWeight={800}>
-              {starterHouse.title}
+              {activeBlueprint.title}
             </Typography>
-            <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap', gap: 1 }}>
-              <Chip label={starterHouse.style} />
-              <Chip label={'Bedrock ' + starterHouse.targetVersion} />
-              <Chip label="Survival · início de jogo" />
-              <Chip
-                label={
-                  starterHouse.size.width +
-                  '×' +
-                  starterHouse.size.depth +
-                  '×' +
-                  starterHouse.size.height
-                }
-              />
-              <Chip label={starterHouse.steps.length + ' etapas'} />
+
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ mt: 1, flexWrap: 'wrap', gap: 1 }}
+            >
+              <Chip label={activeBlueprint.style} />
+              <Chip label={'Bedrock ' + activeBlueprint.targetVersion} />
+              <Chip label={'Survival · ' + activeBlueprint.survivalTier} />
+              <Chip label={activeBlueprint.steps.length + ' etapas'} />
+              {baseBlueprint && (
+                <Chip
+                  variant="outlined"
+                  label={'Continua de: ' + baseBlueprint.title}
+                />
+              )}
             </Stack>
           </Box>
 
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Modo de estudo
-            </Typography>
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={mode}
-              onChange={(_, value: LearningMode | null) => {
-                if (value) setMode(value)
-              }}
-              sx={{ display: 'flex', mt: 0.5 }}
-            >
-              <ToggleButton value="learn">Learn</ToggleButton>
-              <ToggleButton value="build">Build</ToggleButton>
-            </ToggleButtonGroup>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            alignItems={{ sm: 'flex-end' }}
+          >
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Modo de estudo
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={mode}
+                onChange={(_, value: LearningMode | null) => {
+                  if (value) setMode(value)
+                }}
+                sx={{ display: 'flex', mt: 0.5 }}
+              >
+                <ToggleButton value="learn">Learn</ToggleButton>
+                <ToggleButton value="build">Build</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
 
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-              Paleta
-            </Typography>
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={selectedPaletteId}
-              onChange={(_, value: string | null) => {
-                if (value) setSelectedPaletteId(value)
-              }}
-              sx={{ display: 'flex', mt: 0.5 }}
-            >
-              {starterHouse.palettes?.map((palette) => (
-                <ToggleButton key={palette.id} value={palette.id}>
-                  {palette.title}
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
-          </Box>
+            {activeBlueprint.palettes &&
+              activeBlueprint.palettes.length > 0 && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Paleta
+                  </Typography>
+                  <ToggleButtonGroup
+                    exclusive
+                    size="small"
+                    value={selectedPaletteId}
+                    onChange={(_, value: string | null) => {
+                      if (value) setSelectedPaletteId(value)
+                    }}
+                    sx={{ display: 'flex', mt: 0.5 }}
+                  >
+                    {activeBlueprint.palettes.map((palette) => (
+                      <ToggleButton key={palette.id} value={palette.id}>
+                        {palette.title}
+                      </ToggleButton>
+                    ))}
+                  </ToggleButtonGroup>
+                </Box>
+              )}
+          </Stack>
         </Stack>
 
-        <CourseRoadmap course={buildingCourse} />
+        <CourseRoadmap
+          course={buildingCourse}
+          activeBlueprintId={activeBlueprint.id}
+          unlockedBlueprintIds={unlockedBlueprintIds}
+          completedBlueprintIds={completedBlueprintIds}
+          onSelectBlueprint={selectBlueprint}
+        />
 
         <Paper sx={{ p: 2 }}>
           <Stack spacing={1.5}>
@@ -221,12 +423,19 @@ export default function App() {
               alignItems={{ md: 'center' }}
             >
               <Box sx={{ flex: 1 }}>
-                <Stack direction="row" justifyContent="space-between" spacing={2}>
-                  <Typography fontWeight={700}>Progresso da Casa Inicial</Typography>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  spacing={2}
+                >
+                  <Typography fontWeight={700}>
+                    Progresso · {activeBlueprint.title}
+                  </Typography>
                   <Typography color="text.secondary">
-                    {completedStepIds.length}/{starterHouse.steps.length} etapas
+                    {completedStepIds.length}/{activeBlueprint.steps.length} etapas
                   </Typography>
                 </Stack>
+
                 <LinearProgress
                   variant="determinate"
                   value={progress}
@@ -234,11 +443,28 @@ export default function App() {
                 />
               </Box>
 
-              <Typography variant="body2" color="text.secondary">
-                {mode === 'learn'
-                  ? 'Learn esconde algumas soluções até você tentar.'
-                  : 'Build mostra o blueprint imediatamente.'}
-              </Typography>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                flexWrap="wrap"
+              >
+                <Typography variant="body2" color="text.secondary">
+                  {mode === 'learn'
+                    ? 'Learn esconde algumas soluções até você tentar.'
+                    : 'Build mostra o blueprint imediatamente.'}
+                </Typography>
+
+                {completedStepIds.length > 0 && (
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={resetCurrentChapter}
+                  >
+                    Reiniciar capítulo
+                  </Button>
+                )}
+              </Stack>
             </Stack>
 
             <Box
@@ -249,9 +475,9 @@ export default function App() {
                 pb: 0.5,
               }}
             >
-              {starterHouse.steps.map((step, index) => {
+              {activeBlueprint.steps.map((step, index) => {
                 const completed = completedStepIds.includes(step.id)
-                const current = index === stepIndex
+                const current = index === currentStepIndex
                 const unlocked = index <= firstIncompleteIndex
 
                 return (
@@ -272,7 +498,10 @@ export default function App() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', lg: '320px minmax(0, 1fr) 320px' },
+            gridTemplateColumns: {
+              xs: '1fr',
+              lg: '320px minmax(0, 1fr) 320px',
+            },
             gap: 2,
           }}
         >
@@ -281,16 +510,30 @@ export default function App() {
               <Stack spacing={1.5}>
                 <Box>
                   <Typography variant="overline" color="text.secondary">
-                    Etapa {stepIndex + 1} de {starterHouse.steps.length}
+                    Etapa {currentStepIndex + 1} de {activeBlueprint.steps.length}
                   </Typography>
                   <Typography variant="h6" fontWeight={800}>
                     {currentStep.title}
                   </Typography>
-                  <Stack direction="row" gap={0.75} flexWrap="wrap" sx={{ mt: 1 }}>
+
+                  <Stack
+                    direction="row"
+                    gap={0.75}
+                    flexWrap="wrap"
+                    sx={{ mt: 1 }}
+                  >
                     <Chip size="small" label={'Y = ' + currentStep.layer} />
-                    <Chip size="small" variant="outlined" label={currentStep.kind} />
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={currentStep.kind}
+                    />
                     {currentStep.concept && (
-                      <Chip size="small" variant="outlined" label={currentStep.concept} />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={currentStep.concept}
+                      />
                     )}
                   </Stack>
                 </Box>
@@ -299,7 +542,10 @@ export default function App() {
                   <>
                     <Divider />
                     <Box>
-                      <Typography variant="overline" color="text.secondary">
+                      <Typography
+                        variant="overline"
+                        color="text.secondary"
+                      >
                         Desafio
                       </Typography>
                       <Typography fontWeight={700} sx={{ mt: 0.5 }}>
@@ -308,34 +554,53 @@ export default function App() {
                     </Box>
 
                     {hintRevealed && currentStep.challenge.hint && (
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                      >
                         Dica: {currentStep.challenge.hint}
                       </Typography>
                     )}
 
                     <Stack direction="row" gap={1} flexWrap="wrap">
                       {currentStep.challenge.hint && !hintRevealed && (
-                        <Button variant="outlined" size="small" onClick={() => setHintRevealed(true)}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => setHintRevealed(true)}
+                        >
                           Ver dica
                         </Button>
                       )}
-                      <Button variant="contained" size="small" onClick={() => setSolutionRevealed(true)}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => setSolutionRevealed(true)}
+                      >
                         Revelar solução
                       </Button>
                     </Stack>
                   </>
                 ) : (
                   <>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                    >
                       {currentStep.description}
                     </Typography>
 
                     {currentStep.tip && (
                       <Box>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                        >
                           Por que funciona
                         </Typography>
-                        <Typography variant="body2">{currentStep.tip}</Typography>
+                        <Typography variant="body2">
+                          {currentStep.tip}
+                        </Typography>
                       </Box>
                     )}
 
@@ -343,7 +608,10 @@ export default function App() {
                       currentStep.challenge?.reflection &&
                       (solutionRevealed || stepComplete) && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                          >
                             Observe
                           </Typography>
                           <Typography variant="body2">
@@ -360,14 +628,20 @@ export default function App() {
               <Typography variant="overline" color="text.secondary">
                 Bloco selecionado
               </Typography>
+
               {selectedBlock ? (
                 <Stack spacing={1} sx={{ mt: 0.5 }}>
                   <Typography fontWeight={800}>
                     {blockDisplayName(selectedBlock.block)}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    X {selectedBlock.x} · Y {selectedBlock.y} · Z {selectedBlock.z}
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    X {selectedBlock.x} · Y {selectedBlock.y} · Z{' '}
+                    {selectedBlock.z}
                   </Typography>
+
                   {selectedBlock.states && (
                     <Stack direction="row" gap={0.75} flexWrap="wrap">
                       {Object.entries(selectedBlock.states)
@@ -384,7 +658,11 @@ export default function App() {
                   )}
                 </Stack>
               ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
+                >
                   {currentStepVisible
                     ? 'Clique em um bloco novo para ver coordenada e orientação.'
                     : 'Revele a solução para inspecionar os blocos desta etapa.'}
@@ -423,16 +701,20 @@ export default function App() {
                 control={
                   <Switch
                     checked={showPrevious}
-                    onChange={(event) => setShowPrevious(event.target.checked)}
+                    onChange={(event) =>
+                      setShowPrevious(event.target.checked)
+                    }
                   />
                 }
-                label="Ver anteriores"
+                label={baseBlueprint ? 'Ver base + anteriores' : 'Ver anteriores'}
               />
             </Box>
+
             <Divider />
+
             <Box sx={{ height: { xs: 480, md: 650 } }}>
               <BlueprintViewer
-                blueprint={effectiveBlueprint}
+                blueprint={displayBlueprint}
                 visibleStepIds={visibleStepIds}
                 currentStepId={currentStep.id}
                 cameraPreset={cameraPreset}
@@ -444,12 +726,18 @@ export default function App() {
 
           <Stack spacing={2}>
             <Paper sx={{ p: 2 }}>
-              <Typography variant="h6">Materiais desta etapa</Typography>
+              <Typography variant="h6">
+                Materiais desta etapa
+              </Typography>
               <Divider sx={{ my: 1.5 }} />
 
               {challengeLocked ? (
-                <Typography variant="body2" color="text.secondary">
-                  A lista aparece junto com a solução para não entregar a resposta antes da tentativa.
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  A lista aparece junto com a solução para não entregar a
+                  resposta antes da tentativa.
                 </Typography>
               ) : (
                 <Stack spacing={1.2}>
@@ -473,12 +761,29 @@ export default function App() {
             </Paper>
 
             <Paper sx={{ p: 2 }}>
-              <Typography variant="h6">Lista total</Typography>
+              <Typography variant="h6">
+                {baseBlueprint ? 'Materiais novos do capítulo' : 'Lista total'}
+              </Typography>
               <Divider sx={{ my: 1.5 }} />
+
+              {baseBlueprint && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mb: 1.5 }}
+                >
+                  A casa já existente não entra nesta conta.
+                </Typography>
+              )}
+
               <Stack spacing={1.2}>
                 {totalMaterials.map((item) => (
                   <Box key={item.block}>
-                    <Stack direction="row" justifyContent="space-between" spacing={2}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={2}
+                    >
                       <Typography variant="body2">
                         {blockDisplayName(item.block)}
                       </Typography>
@@ -486,9 +791,14 @@ export default function App() {
                         {item.count}
                       </Typography>
                     </Stack>
+
                     {item.count > 64 && (
-                      <Typography variant="caption" color="text.secondary">
-                        {Math.floor(item.count / 64)} stack(s) + {item.count % 64}
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                      >
+                        {Math.floor(item.count / 64)} stack(s) +{' '}
+                        {item.count % 64}
                       </Typography>
                     )}
                   </Box>
@@ -506,37 +816,54 @@ export default function App() {
             spacing={2}
           >
             <Box>
-              <Typography fontWeight={800}>{currentStep.title}</Typography>
+              <Typography fontWeight={800}>
+                {currentStep.title}
+              </Typography>
               <Typography variant="body2" color="text.secondary">
-                {currentStepBlocks.length} posições · camada Y={currentStep.layer}
+                {currentStepBlocks.length} posições · camada Y=
+                {currentStep.layer}
               </Typography>
             </Box>
 
             <Stack direction="row" gap={1} flexWrap="wrap">
               <Button
                 variant="outlined"
-                disabled={stepIndex === 0}
-                onClick={() => setStepIndex(stepIndex - 1)}
+                disabled={currentStepIndex === 0}
+                onClick={() => setStepIndex(currentStepIndex - 1)}
               >
                 Anterior
               </Button>
 
               {stepComplete ? (
-                <Button
-                  variant="contained"
-                  disabled={stepIndex >= firstIncompleteIndex}
-                  onClick={goToNextUnlockedStep}
-                >
-                  Próxima etapa
-                </Button>
+                currentStepIndex < firstIncompleteIndex ? (
+                  <Button
+                    variant="contained"
+                    onClick={goToNextUnlockedStep}
+                  >
+                    Próxima etapa
+                  </Button>
+                ) : nextUnlockedBlueprintId ? (
+                  <Button
+                    variant="contained"
+                    onClick={() =>
+                      selectBlueprint(nextUnlockedBlueprintId)
+                    }
+                  >
+                    Abrir próximo capítulo
+                  </Button>
+                ) : (
+                  <Button variant="contained" disabled>
+                    Capítulo concluído
+                  </Button>
+                )
               ) : (
                 <Button
                   variant="contained"
                   disabled={!canComplete}
                   onClick={completeCurrentStep}
                 >
-                  {stepIndex === starterHouse.steps.length - 1
-                    ? 'Concluir Casa Inicial'
+                  {currentStepIndex === activeBlueprint.steps.length - 1
+                    ? 'Concluir capítulo'
                     : 'Concluir e avançar'}
                 </Button>
               )}
