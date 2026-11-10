@@ -28,6 +28,7 @@ import {
   summarizeBlueprintMaterials,
 } from './utils/materials'
 import { applyPalette } from './utils/palette'
+import { composeCompletedBaseChain } from './utils/resolve-blueprint-chain'
 
 type LearningMode = 'build' | 'learn'
 
@@ -132,16 +133,15 @@ export default function App() {
     ? blueprintRegistry[activeBlueprint.baseBlueprintId]
     : undefined
 
-  const effectiveBaseBlueprint = useMemo(() => {
-    if (!baseBlueprint) return undefined
-
-    const basePalette =
-      baseBlueprint.palettes?.find(
-        (palette) => palette.id === selectedPaletteId,
-      ) ?? baseBlueprint.palettes?.[0]
-
-    return applyPalette(baseBlueprint, basePalette)
-  }, [baseBlueprint, selectedPaletteId])
+  const effectiveBaseBlueprint = useMemo(
+    () =>
+      composeCompletedBaseChain(
+        blueprintRegistry,
+        activeBlueprint,
+        selectedPaletteId,
+      ),
+    [activeBlueprint, selectedPaletteId],
+  )
 
   const currentStepIndex = Math.min(
     stepIndex,
