@@ -1,6 +1,7 @@
 import { OrbitControls } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
+import type { OrthographicCamera } from 'three'
 import type { Blueprint } from '../domain/blueprint'
 import { BlockMesh } from './BlockMesh'
 
@@ -28,11 +29,9 @@ function CameraRig({ preset }: { preset: CameraPreset }) {
     camera.position.set(x, y, z)
     camera.lookAt(0, 3, 0)
 
-    if ('zoom' in camera) {
-      camera.zoom = preset === 'top' ? 42 : 38
-    }
-
-    camera.updateProjectionMatrix()
+    const orthographicCamera = camera as OrthographicCamera
+    orthographicCamera.zoom = preset === 'top' ? 42 : 38
+    orthographicCamera.updateProjectionMatrix()
   }, [camera, preset])
 
   return null
