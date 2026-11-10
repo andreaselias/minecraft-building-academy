@@ -24,6 +24,7 @@ export const buildingCourse: BuildingCourse = {
       survivalStage: 'Primeira semana',
       status: 'planned',
       skills: ['Assimetria', 'Extensões', 'Detalhamento', 'Paleta'],
+      blueprintId: 'house-upgrade-01',
     },
     {
       id: 'workshop-storage',
