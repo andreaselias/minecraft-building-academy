@@ -8,13 +8,17 @@ A primeira experiência é a **Casa Inicial**:
 
 - Survival-first;
 - blueprint reproduzível bloco a bloco;
-- navegação por camada;
+- 13 etapas guiadas;
+- mais de uma etapa dentro da mesma camada;
+- modos **Learn** e **Build**;
+- desafios que podem esconder a solução até a tentativa;
 - visualização 3D orbitável;
 - vistas de topo, frente e lateral;
-- camadas anteriores em modo ghost;
-- materiais por camada e lista total;
+- etapas anteriores em modo ghost;
+- materiais por etapa e lista total;
+- seleção de bloco com coordenadas e orientação;
 - progresso salvo localmente;
-- explicações sobre footprint, ritmo estrutural, profundidade e silhueta.
+- trilha do curso até o Nether Hub.
 
 ## Stack
 
@@ -42,13 +46,13 @@ npm run build
 
 ```text
 src/
-  components/       viewer 3D e representação dos blocos
-  data/             blueprints do curso
-  domain/           modelo de domínio
+  components/       viewer 3D e componentes da experiência
+  data/             blueprints e trilha do curso
+  domain/           modelos de blueprint e curso
   utils/            cálculo de materiais e utilidades
 
 docs/
-  product.md        visão do produto e progressão do curso
+  product.md
   blueprint-format.md
 ```
 
