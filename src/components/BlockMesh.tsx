@@ -6,6 +6,7 @@ interface BlockMeshProps {
   block: BlueprintBlock
   position: [number, number, number]
   ghost?: boolean
+  ghostOpacity?: number
   selected?: boolean
   onSelect?: (block: BlueprintBlock) => void
 }
@@ -84,12 +85,13 @@ export function BlockMesh({
   block,
   position,
   ghost = false,
+  ghostOpacity = 0.13,
   selected = false,
   onSelect,
 }: BlockMeshProps) {
   const color = colorFor(block.block)
   const isGlass = block.block.includes('glass')
-  const opacity = ghost ? 0.13 : isGlass ? 0.42 : 1
+  const opacity = ghost ? ghostOpacity : isGlass ? 0.42 : 1
   const edges = !ghost
   const edgeColor = selected ? '#ffffff' : '#151515'
 
