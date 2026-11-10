@@ -292,6 +292,7 @@ export const starterHouse: Blueprint = {
   title: 'Casa Inicial',
   edition: 'bedrock',
   minimumVersion: '1.21',
+  targetVersion: '26.60',
   style: 'Medieval / fantasia survival',
   survivalTier: 'early',
   size: {
