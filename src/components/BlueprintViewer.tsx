@@ -54,8 +54,15 @@ export function BlueprintViewer({
     [blueprint, visibleStepSet],
   )
 
-  const centerX = (blueprint.size.width - 1) / 2
-  const centerZ = (blueprint.size.depth - 1) / 2
+  const { centerX, centerZ } = useMemo(() => {
+    const xs = blueprint.blocks.map((block) => block.x)
+    const zs = blueprint.blocks.map((block) => block.z)
+
+    return {
+      centerX: (Math.min(...xs) + Math.max(...xs)) / 2,
+      centerZ: (Math.min(...zs) + Math.max(...zs)) / 2,
+    }
+  }, [blueprint.blocks])
 
   return (
     <Canvas
