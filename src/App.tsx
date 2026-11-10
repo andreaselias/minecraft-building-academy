@@ -149,6 +149,7 @@ export default function App() {
             </Typography>
             <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap', gap: 1 }}>
               <Chip label={starterHouse.style} />
+              <Chip label={'Bedrock ' + starterHouse.targetVersion} />
               <Chip label="Survival · início de jogo" />
               <Chip
                 label={
