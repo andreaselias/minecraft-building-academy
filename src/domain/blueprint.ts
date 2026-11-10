@@ -64,6 +64,7 @@ export interface BuildStep {
 export interface Blueprint {
   id: string
   title: string
+  baseBlueprintId?: string
   edition: 'bedrock'
   minimumVersion: string
   targetVersion: string
