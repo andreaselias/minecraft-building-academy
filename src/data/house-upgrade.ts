@@ -112,6 +112,23 @@ const steps: BuildStep[] = [
     },
   },
   {
+    id: 'woodshed-door',
+    title: 'Abra a passagem lateral',
+    description:
+      'Substitua dois blocos da parede existente por uma porta para conectar a casa ao novo volume lateral.',
+    layer: 1,
+    kind: 'shell',
+    concept: 'adaptive reuse',
+    tip: 'Uma boa expansão reaproveita a construção existente em vez de tratá-la como descartável.',
+    challenge: {
+      prompt:
+        'Escolha uma posição para conectar o anexo sem cortar um dos pilares estruturais da casa.',
+      hint: 'Procure um trecho de spruce planks entre dois elementos estruturais.',
+      reflection:
+        'Ao reformar, preserve o ritmo estrutural e altere primeiro os painéis de preenchimento.',
+    },
+  },
+  {
     id: 'woodshed-posts-01',
     title: 'Estruture o anexo',
     description:
@@ -243,6 +260,28 @@ export const houseUpgrade: Blueprint = {
     },
   ],
   steps,
+  operations: [
+    {
+      type: 'replace',
+      stepId: 'woodshed-door',
+      x: 7,
+      y: 1,
+      z: 8,
+      block: 'minecraft:spruce_door',
+      states: { facing: 'south', half: 'bottom' },
+      materialUnits: 1,
+    },
+    {
+      type: 'replace',
+      stepId: 'woodshed-door',
+      x: 7,
+      y: 2,
+      z: 8,
+      block: 'minecraft:spruce_door',
+      states: { facing: 'south', half: 'top' },
+      materialUnits: 0,
+    },
+  ],
   palettes: [
     {
       id: 'spruce',
@@ -258,6 +297,7 @@ export const houseUpgrade: Blueprint = {
         'minecraft:spruce_log': 'minecraft:oak_log',
         'minecraft:spruce_planks': 'minecraft:oak_planks',
         'minecraft:spruce_slab': 'minecraft:oak_slab',
+        'minecraft:spruce_door': 'minecraft:oak_door',
       },
     },
   ],
@@ -265,6 +305,7 @@ export const houseUpgrade: Blueprint = {
     'minecraft:spruce_log': ['minecraft:oak_log'],
     'minecraft:spruce_planks': ['minecraft:oak_planks'],
     'minecraft:spruce_slab': ['minecraft:oak_slab'],
+    'minecraft:spruce_door': ['minecraft:oak_door'],
   },
   blocks,
 }
